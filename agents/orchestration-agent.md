@@ -51,9 +51,14 @@ Filter out any that already have labels: `ready-for-dev`, `in-progress`, `qa-app
 
 If any unanalyzed issues found:
 - Log: `[ORCH] Found N unanalyzed issues in <repo>. Triggering PM Agent.`
-- Trigger PM Agent with a prompt like:
+- Use the `schedule_task` tool to invoke PM Agent:
   ```
-  Analyze all open issues without status labels. For each: run 8-question analysis, post PRD comment, add priority label, add ready-for-dev if high/critical.
+  schedule_task(
+    targetJid: "pm-agent@nanoclaw.local",
+    prompt: "Analyze all open issues without status labels in all active repos from /workspace/global/projects-config.json. For each: run 8-question analysis, post PRD comment on GitHub, add priority:critical/high/medium/low label, add ready-for-dev label if priority is high or critical.",
+    runOnce: true,
+    isolated: true
+  )
   ```
 
 ---
@@ -69,14 +74,23 @@ gh issue list --repo <owner/repo> --label "ready-for-dev" \
 
 For each one that doesn't have `in-progress`:
 - Log: `[ORCH] Issue #N has ready-for-dev. Triggering Dev Agent.`
-- Trigger Dev Agent
-- Remove `ready-for-dev` label
-- Add `in-progress` label
-
-```bash
-gh issue edit <number> --repo <owner/repo> --remove-label "ready-for-dev"
-gh issue edit <number> --repo <owner/repo> --add-label "in-progress"
-```
+- Use the `schedule_task` tool to invoke Dev Agent:
+  ```
+  schedule_task(
+    targetJid: "dev-agent@nanoclaw.local",
+    prompt: "Implement all ready-for-dev features from active repos in /workspace/global/projects-config.json. For each: create feature branch, implement per PRD comment, write tests, open PR to dev branch with QA attempt counter (1/3).",
+    runOnce: true,
+    isolated: true
+  )
+  ```
+- Remove `ready-for-dev` label:
+  ```bash
+  gh issue edit <number> --repo <owner/repo> --remove-label "ready-for-dev"
+  ```
+- Add `in-progress` label:
+  ```bash
+  gh issue edit <number> --repo <owner/repo> --add-label "in-progress"
+  ```
 
 ---
 
@@ -91,7 +105,15 @@ gh pr list --repo <owner/repo> --base dev --state open \
 
 For each PR:
 - Check if there's already a comment with "## Adversarial QA Report" in it
-- If NO test report yet → Trigger QA Agent
+- If NO test report yet → Use `schedule_task` to invoke QA Agent:
+  ```
+  schedule_task(
+    targetJid: "qa-agent@nanoclaw.local",
+    prompt: "Test all open PRs to the dev branch in active repos from /workspace/global/projects-config.json. For each PR: Phase 1 recon, Phase 2 test plan, Phase 3 preconditions, Phase 4 execute tests. Post detailed QA report with status (APPROVED, REQUEST CHANGES, or REJECTED).",
+    runOnce: true,
+    isolated: true
+  )
+  ```
 - If test report EXISTS → Go to Step 5
 
 ---
@@ -121,14 +143,33 @@ Extract the attempt counter from the PR body. Look for `## QA Attempts: N/3` and
 
 If N < 3:
 - Log: `[ORCH] PR #N failed QA (attempt N/3). Re-triggering Dev Agent.`
-- Trigger Dev Agent with the QA test report feedback
-- Dev Agent will increment the counter to N+1/3
+- Use `schedule_task` to re-trigger Dev Agent with QA feedback:
+  ```
+  schedule_task(
+    targetJid: "dev-agent@nanoclaw.local",
+    prompt: "Fix failed QA issues and re-test. PR #N has attempt N/3. QA feedback: [copy the entire QA report here]. Push fixes to the same branch, increment QA Attempts counter to (N+1)/3 in PR description.",
+    runOnce: true,
+    isolated: true
+  )
+  ```
 
 If N = 3:
 - Log: `[ORCH] PR #N failed QA 3 times. Sending back to PM Agent.`
 - Comment on the PR: "3 QA attempts exhausted. Returning to PM Agent for PRD re-evaluation."
-- Remove `in-progress` and `ready-for-dev` labels from the linked issue
-- Trigger PM Agent with the full test report history
+- Remove `in-progress` and `ready-for-dev` labels from the linked issue:
+  ```bash
+  gh issue edit <issue_number> --repo <owner/repo> --remove-label "in-progress"
+  gh issue edit <issue_number> --repo <owner/repo> --remove-label "ready-for-dev"
+  ```
+- Use `schedule_task` to send back to PM Agent:
+  ```
+  schedule_task(
+    targetJid: "pm-agent@nanoclaw.local",
+    prompt: "PRD re-evaluation needed. Issue #N failed QA 3 times. QA test reports: [copy all 3 QA report comments here]. Analyze what went wrong, revise PRD with clearer acceptance criteria and updated scope estimate, post revised PRD comment, add ready-for-dev label to restart dev cycle.",
+    runOnce: true,
+    isolated: true
+  )
+  ```
 
 ### If REJECTED (FINAL):
 - Same as N = 3 above (already handled)
