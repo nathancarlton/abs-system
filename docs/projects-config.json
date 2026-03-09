@@ -1,0 +1,31 @@
+{
+  "projects": [
+    {
+      "id": "sketchvault",
+      "name": "SketchVault",
+      "description": "Commercial music composition app (Vite/React/TypeScript)",
+      "github_repos": ["nathancarlton/sketchvault"],
+      "local_paths": ["/Users/nathancarlton/.openclaw/workspace/PROJECTS/sketchvault"],
+      "status": "active",
+      "priority": "high"
+    },
+    {
+      "id": "nanodash",
+      "name": "NanoDash",
+      "description": "Personal lifecycle dashboard (PHP/Dreamhost)",
+      "github_repos": ["nathancarlton/nanodash"],
+      "local_paths": ["/Users/nathancarlton/nanoclaw/nanoclaw/workspace/nanodash"],
+      "status": "active",
+      "priority": "high"
+    }
+  ],
+  "abs_flow": {
+    "polling_interval_minutes": 15,
+    "dev_attempts_max": 3,
+    "discord_poll_interval_minutes": 30,
+    "pm_trigger": "manual or 11pm nightly",
+    "dev_trigger": "orchestration detects ready-for-dev label",
+    "qa_trigger": "orchestration detects new PR to dev branch",
+    "orchestration_trigger": "every 15 minutes"
+  }
+}
