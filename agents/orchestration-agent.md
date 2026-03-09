@@ -135,9 +135,53 @@ If N = 3:
 
 ---
 
-## Step 6: Report Status
+## Step 6: Update NanoDash for Each Project
 
-After checking all repos, log a summary:
+For each project in `projects-config.json`, compile a status summary and update the dashboard:
+
+**For each project:**
+
+1. Count the current state across all issues:
+   - Unanalyzed issues (no status label)
+   - Ready-for-dev (high/critical priority, awaiting Dev)
+   - In-progress (Dev or QA working on it)
+   - Awaiting-human-review (QA approved, waiting for Nathan)
+   - Completed/merged (closed issues)
+
+2. Determine the last action that happened for this project:
+   - If PM was just triggered: `"Analyzing N unanalyzed issues"`
+   - If Dev was just triggered: `"Implementing N ready-for-dev features"`
+   - If QA was just triggered: `"Testing N new PRs"`
+   - If QA approved: `"N PRs approved by QA, awaiting human review"`
+   - Otherwise: `"Pipeline stable: N in-progress, M awaiting-review"`
+
+3. Extract the project_id from projects-config.json (e.g., "sketchvault", "nanodash")
+
+4. Call the NanoDash API to update agent status:
+
+```bash
+curl -X POST "https://nathancarlton.com/nanodash/api.php" \
+  -H "Authorization: Bearer quarterback-8f3c2a9d7e1b4f6c5a2e9d1f3b7c2a8e" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"action\": \"update_agent_status\",
+    \"project_id\": \"<project_id>\",
+    \"role\": \"Orchestration\",
+    \"last_action\": \"<action_summary>\",
+    \"last_action_link\": \"https://github.com/<owner>/<repo>/issues\"
+  }"
+```
+
+Replace:
+- `<project_id>` with the ID from projects-config.json (e.g., "sketchvault")
+- `<action_summary>` with the status from step 2 above
+- `<owner>/<repo>` with the actual GitHub repo
+
+---
+
+## Step 7: Final Summary
+
+After updating NanoDash for all projects, log the complete poll summary:
 
 ```
 [ORCH] Poll complete:
@@ -148,6 +192,18 @@ After checking all repos, log a summary:
 - QA approved: 1 PR
 - QA returned to Dev: 1 PR (attempt 1/3)
 - Ready for human review: 2 PRs
+- NanoDash updated: 2 projects
+```
+
+Send summary to Discord (if available):
+```
+🤖 Orchestration Poll Complete
+
+Checked 2 projects:
+- sketchvault: 1 in-progress, 1 awaiting-review
+- nanodash: 2 in-progress
+
+Next cycle in 15 minutes.
 ```
 
 ---
